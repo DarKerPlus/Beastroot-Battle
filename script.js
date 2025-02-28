@@ -31,6 +31,8 @@ class AnimalChess {
         };
         
         this.stunned = null; // 记录被咆哮的棋子位置
+        this.stunnedPlayer = null; // 记录被咆哮棋子的所属方
+        this.hasStunnedPlayerMoved = false; // 记录被咆哮方是否已经行动
         this.init();
         this.initSkills();
     }
@@ -110,7 +112,6 @@ class AnimalChess {
         const x = this.padding + col * this.cellSize + this.cellSize / 2;
         const y = this.padding + row * this.cellSize + this.cellSize / 2;
         
-        // 添加棋子阴影
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
         this.ctx.shadowBlur = 5;
         this.ctx.shadowOffsetX = 2;
@@ -120,21 +121,28 @@ class AnimalChess {
         this.ctx.arc(x, y, this.cellSize / 2 - 5, 0, Math.PI * 2);
         
         if (!piece.revealed) {
-            // 暗置的棋子使用木纹色
             this.ctx.fillStyle = '#8B4513';
         } else {
-            // 明置的棋子
             const gradient = this.ctx.createRadialGradient(
                 x - 5, y - 5, 5,
                 x, y, this.cellSize / 2 - 5
             );
             
-            if (piece.player === '红方') {
-                gradient.addColorStop(0, '#ff6b6b');
-                gradient.addColorStop(1, '#c92a2a');
+            // 检查是否被咆哮
+            if (this.stunned && 
+                this.stunned[0] === row && 
+                this.stunned[1] === col) {
+                // 被咆哮的棋子显示为灰色
+                gradient.addColorStop(0, '#a0a0a0');
+                gradient.addColorStop(1, '#606060');
             } else {
-                gradient.addColorStop(0, '#74c0fc');
-                gradient.addColorStop(1, '#1864ab');
+                if (piece.player === '红方') {
+                    gradient.addColorStop(0, '#ff6b6b');
+                    gradient.addColorStop(1, '#c92a2a');
+                } else {
+                    gradient.addColorStop(0, '#74c0fc');
+                    gradient.addColorStop(1, '#1864ab');
+                }
             }
             
             this.ctx.fillStyle = gradient;
@@ -146,7 +154,6 @@ class AnimalChess {
         this.ctx.stroke();
         
         if (piece.revealed) {
-            // 重置阴影
             this.ctx.shadowColor = 'transparent';
             this.ctx.shadowBlur = 0;
             this.ctx.shadowOffsetX = 0;
@@ -157,9 +164,20 @@ class AnimalChess {
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(piece.type, x, y);
+
+            // 如果是猫且有两命，添加标记
+            if (piece.type === '猫') {
+                const color = piece.player === '红方' ? 'red' : 'blue';
+                if (this.skills[color].cat.active && !this.skills[color].cat.used) {
+                    // 在棋子上方绘制小圆点表示两命
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y - this.cellSize/3, 5, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#32CD32'; // 绿色圆点表示有两命
+                    this.ctx.fill();
+                }
+            }
         }
         
-        // 重置阴影
         this.ctx.shadowColor = 'transparent';
         this.ctx.shadowBlur = 0;
         this.ctx.shadowOffsetX = 0;
@@ -224,8 +242,7 @@ class AnimalChess {
             // 如果点击的是暗置棋子
             if (piece && !piece.revealed) {
                 this.revealPiece(row, col);
-                this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
-                this.updateCurrentPlayer();
+                this.handleTurnEnd();
                 this.drawBoard();
                 return;
             }
@@ -269,9 +286,7 @@ class AnimalChess {
                                 this.skills[color].cat.used = true;
                                 document.getElementById(`${color}-cat-skill`).classList.add('used');
                                 alert('猫使用了两命技能，免疫了这次伤害！');
-                                // 不移动棋子，但是切换玩家回合
-                                this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
-                                this.updateCurrentPlayer();
+                                this.handleTurnEnd();
                                 this.selectedPiece = null;
                                 this.drawBoard();
                                 return;
@@ -281,16 +296,14 @@ class AnimalChess {
                         // 正常的吃子逻辑
                         this.board[row][col] = selectedPiece;
                         this.board[selectedRow][selectedCol] = null;
-                        this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
-                        this.updateCurrentPlayer();
+                        this.handleTurnEnd();
                         this.checkWinner();
                     } 
                     // 如果目标位置为空，直接移动
                     else if (!targetPiece) {
                         this.board[row][col] = selectedPiece;
                         this.board[selectedRow][selectedCol] = null;
-                        this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
-                        this.updateCurrentPlayer();
+                        this.handleTurnEnd();
                     }
                 }
                 
@@ -364,12 +377,14 @@ class AnimalChess {
                 const piece = this.board[row][col];
                 if (piece && piece.revealed && piece.player !== `${color === 'red' ? '红' : '蓝'}方`) {
                     this.stunned = [row, col];
+                    this.stunnedPlayer = piece.player; // 记录被咆哮棋子的所属方
+                    this.hasStunnedPlayerMoved = false; // 重置行动标记
                     this.skills[color].dog.used = true;
                     document.getElementById(`${color}-dog-skill`).classList.add('used');
                     alert(`${piece.type}被咆哮震慑，下回合无法行动！`);
-                    // 使用咆哮技能后不切换玩家回合
                     this.canvas.style.cursor = 'default';
                     this.canvas.removeEventListener('click', handler);
+                    this.drawBoard();
                 }
             }
         };
@@ -413,6 +428,28 @@ class AnimalChess {
         });
         
         this.stunned = null;
+        this.stunnedPlayer = null;
+        this.hasStunnedPlayerMoved = false;
+    }
+
+    // 添加新方法来处理玩家行动后的状态更新
+    handleTurnEnd() {
+        // 在切换玩家之前，检查是否是被咆哮方的行动
+        if (this.stunned && this.currentPlayer === this.stunnedPlayer) {
+            this.hasStunnedPlayerMoved = true;
+        }
+
+        // 如果被咆哮方已经行动过，解除咆哮状态
+        if (this.hasStunnedPlayerMoved) {
+            this.stunned = null;
+            this.stunnedPlayer = null;
+            this.hasStunnedPlayerMoved = false;
+            this.drawBoard();
+        }
+
+        // 切换玩家
+        this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
+        this.updateCurrentPlayer();
     }
 }
 
