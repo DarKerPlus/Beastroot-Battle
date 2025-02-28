@@ -1,0 +1,123 @@
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Ma Shan Zheng', cursive;
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
+                url('https://images.unsplash.com/photo-1536147116438-62679a5e01f2?auto=format&fit=crop&w=1920') center/cover;
+}
+
+.jungle-background {
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.container {
+    text-align: center;
+    margin: 0 auto;
+    max-width: 800px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+    color: #2c5530;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    margin-bottom: 30px;
+}
+
+.game-info {
+    margin: 20px 0;
+    font-size: 1.5em;
+}
+
+.player-turn {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 20px;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.game-info span#current-player {
+    font-weight: bold;
+    padding: 5px 15px;
+    border-radius: 20px;
+    margin-left: 10px;
+}
+
+.game-info span#current-player.red {
+    background-color: #ffebee;
+    color: #d32f2f;
+    box-shadow: 0 0 10px rgba(211, 47, 47, 0.3);
+}
+
+.game-info span#current-player.blue {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    box-shadow: 0 0 10px rgba(25, 118, 210, 0.3);
+}
+
+.board-container {
+    padding: 20px;
+    background: rgba(242, 176, 109, 0.2);
+    border-radius: 15px;
+    margin: 20px auto;
+    display: inline-block;
+}
+
+#board {
+    border: 3px solid #4a3728;
+    background-color: #f2b06d;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+button {
+    margin-top: 20px;
+    padding: 12px 30px;
+    font-size: 1.2em;
+    background-color: #2c5530;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-family: 'Ma Shan Zheng', cursive;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+    background-color: #3a7042;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+        margin: 10px;
+    }
+    
+    h1 {
+        font-size: 2em;
+    }
+    
+    .game-info {
+        font-size: 1.2em;
+    }
+    
+    #board {
+        width: 100%;
+        height: auto;
+    }
+} 
