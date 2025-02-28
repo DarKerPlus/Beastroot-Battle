@@ -15,7 +15,24 @@ class AnimalChess {
         };
         
         this.board = Array(4).fill().map(() => Array(4).fill(null));
+        
+        // 添加技能状态
+        this.skills = {
+            red: {
+                cat: { active: false, used: false },
+                lion: { active: false, used: false },
+                dog: { active: false, used: false }
+            },
+            blue: {
+                cat: { active: false, used: false },
+                lion: { active: false, used: false },
+                dog: { active: false, used: false }
+            }
+        };
+        
+        this.stunned = null; // 记录被咆哮的棋子位置
         this.init();
+        this.initSkills();
     }
 
     init() {
@@ -159,6 +176,11 @@ class AnimalChess {
         const playerSpan = document.getElementById('current-player');
         playerSpan.textContent = this.currentPlayer;
         playerSpan.className = this.currentPlayer === '红方' ? 'red' : 'blue';
+        
+        // 更新棋盘边框高亮
+        const boardContainer = document.querySelector('.board-container');
+        boardContainer.classList.remove('red-turn', 'blue-turn');
+        boardContainer.classList.add(this.currentPlayer === '红方' ? 'red-turn' : 'blue-turn');
     }
 
     checkWinner() {
@@ -201,7 +223,7 @@ class AnimalChess {
             
             // 如果点击的是暗置棋子
             if (piece && !piece.revealed) {
-                piece.revealed = true;
+                this.revealPiece(row, col);
                 this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
                 this.updateCurrentPlayer();
                 this.drawBoard();
@@ -220,6 +242,16 @@ class AnimalChess {
                     return;
                 }
                 
+                // 检查是否被咆哮
+                if (this.stunned && 
+                    this.stunned[0] === selectedRow && 
+                    this.stunned[1] === selectedCol) {
+                    alert('该棋子被咆哮震慑，本回合无法行动！');
+                    this.selectedPiece = null;
+                    this.drawBoard();
+                    return;
+                }
+                
                 // 尝试移动棋子
                 if (this.canMove(selectedRow, selectedCol, row, col)) {
                     const targetPiece = this.board[row][col];
@@ -229,6 +261,24 @@ class AnimalChess {
                         targetPiece.player !== this.currentPlayer && 
                         this.canEat(selectedPiece, targetPiece)) {
                         
+                        // 处理猫的两命技能
+                        if (targetPiece.type === '猫') {
+                            const color = targetPiece.player === '红方' ? 'red' : 'blue';
+                            if (this.skills[color].cat.active && !this.skills[color].cat.used &&
+                                !(selectedPiece.type === '狮' && this.skills[selectedPiece.player === '红方' ? 'red' : 'blue'].lion.active)) {
+                                this.skills[color].cat.used = true;
+                                document.getElementById(`${color}-cat-skill`).classList.add('used');
+                                alert('猫使用了两命技能，免疫了这次伤害！');
+                                // 不移动棋子，但是切换玩家回合
+                                this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
+                                this.updateCurrentPlayer();
+                                this.selectedPiece = null;
+                                this.drawBoard();
+                                return;
+                            }
+                        }
+                        
+                        // 正常的吃子逻辑
                         this.board[row][col] = selectedPiece;
                         this.board[selectedRow][selectedCol] = null;
                         this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
@@ -279,12 +329,90 @@ class AnimalChess {
         this.ctx.strokeStyle = '#000';
     }
 
+    initSkills() {
+        // 初始化技能点击事件
+        ['red', 'blue'].forEach(color => {
+            ['cat', 'lion', 'dog'].forEach(animal => {
+                const skillBox = document.getElementById(`${color}-${animal}-skill`);
+                skillBox.addEventListener('click', () => this.handleSkillClick(color, animal));
+            });
+        });
+    }
+
+    handleSkillClick(color, animal) {
+        if (this.currentPlayer !== `${color === 'red' ? '红' : '蓝'}方`) return;
+        const skill = this.skills[color][animal];
+        
+        if (!skill.active || skill.used) return;
+
+        if (animal === 'dog' && !skill.used) {
+            // 处理咆哮技能
+            this.activateDogSkill(color);
+        }
+    }
+
+    activateDogSkill(color) {
+        this.canvas.style.cursor = 'crosshair';
+        const handler = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const col = Math.floor(x / this.cellSize);
+            const row = Math.floor(y / this.cellSize);
+            
+            if (row >= 0 && row < 4 && col >= 0 && col < 4) {
+                const piece = this.board[row][col];
+                if (piece && piece.revealed && piece.player !== `${color === 'red' ? '红' : '蓝'}方`) {
+                    this.stunned = [row, col];
+                    this.skills[color].dog.used = true;
+                    document.getElementById(`${color}-dog-skill`).classList.add('used');
+                    alert(`${piece.type}被咆哮震慑，下回合无法行动！`);
+                    // 使用咆哮技能后不切换玩家回合
+                    this.canvas.style.cursor = 'default';
+                    this.canvas.removeEventListener('click', handler);
+                }
+            }
+        };
+        
+        this.canvas.addEventListener('click', handler);
+    }
+
+    // 在棋子翻开时激活对应的技能
+    revealPiece(row, col) {
+        const piece = this.board[row][col];
+        if (!piece || piece.revealed) return;
+        
+        piece.revealed = true;
+        const color = piece.player === '红方' ? 'red' : 'blue';
+        
+        // 激活对应技能
+        if (['猫', '狮', '狗'].includes(piece.type)) {
+            const skillType = piece.type === '猫' ? 'cat' : 
+                            piece.type === '狮' ? 'lion' : 'dog';
+            this.skills[color][skillType].active = true;
+            const skillBox = document.getElementById(`${color}-${skillType}-skill`);
+            skillBox.classList.add('active');
+            skillBox.querySelector('.skill-status').textContent = '已激活';
+        }
+    }
+
     restart() {
         this.init();
         this.currentPlayer = '红方';
         this.gameOver = false;
         this.selectedPiece = null;
         this.updateCurrentPlayer();
+        
+        // 重置技能状态
+        ['red', 'blue'].forEach(color => {
+            ['cat', 'lion', 'dog'].forEach(animal => {
+                this.skills[color][animal] = { active: false, used: false };
+                const skillBox = document.getElementById(`${color}-${animal}-skill`);
+                skillBox.classList.remove('active', 'used');
+            });
+        });
+        
+        this.stunned = null;
     }
 }
 

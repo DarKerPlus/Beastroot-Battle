@@ -11,15 +11,51 @@
     <div class="jungle-background">
         <div class="container">
             <h1>丛林斗兽棋</h1>
-            <div class="game-info">
-                <div class="player-turn">
-                    <span>当前玩家: <span id="current-player">红方</span></span>
+            <div class="game-container">
+                <!-- 红方技能区 -->
+                <div class="skills-container red-skills">
+                    <div class="skill-box" id="red-cat-skill">
+                        <span class="skill-name">两命</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
+                    <div class="skill-box" id="red-lion-skill">
+                        <span class="skill-name">破两命</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
+                    <div class="skill-box" id="red-dog-skill">
+                        <span class="skill-name">咆哮</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
+                </div>
+
+                <div class="board-section">
+                    <div class="game-info">
+                        <div class="player-turn">
+                            <span>当前玩家: <span id="current-player">红方</span></span>
+                        </div>
+                    </div>
+                    <div class="board-container">
+                        <canvas id="board" width="400" height="400"></canvas>
+                    </div>
+                    <button id="restart">重新开始</button>
+                </div>
+
+                <!-- 蓝方技能区 -->
+                <div class="skills-container blue-skills">
+                    <div class="skill-box" id="blue-cat-skill">
+                        <span class="skill-name">两命</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
+                    <div class="skill-box" id="blue-lion-skill">
+                        <span class="skill-name">破两命</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
+                    <div class="skill-box" id="blue-dog-skill">
+                        <span class="skill-name">咆哮</span>
+                        <span class="skill-status">未激活</span>
+                    </div>
                 </div>
             </div>
-            <div class="board-container">
-                <canvas id="board" width="400" height="400"></canvas>
-            </div>
-            <button id="restart">重新开始</button>
         </div>
     </div>
     <script src="script.js"></script>
