@@ -16,23 +16,35 @@ class AnimalChess {
         
         this.board = Array(4).fill().map(() => Array(4).fill(null));
         
-        // 添加技能状态
+        // 修改技能状态
         this.skills = {
             red: {
                 cat: { active: false, used: false },
-                lion: { active: false, used: false },
-                dog: { active: false, used: false }
+                dog: { active: false, used: false },
+                tiger: { active: false, used: false },
+                leopard: { active: false, used: false }
             },
             blue: {
                 cat: { active: false, used: false },
-                lion: { active: false, used: false },
-                dog: { active: false, used: false }
+                dog: { active: false, used: false },
+                tiger: { active: false, used: false },
+                leopard: { active: false, used: false }
             }
         };
         
-        this.stunned = null; // 记录被咆哮的棋子位置
-        this.stunnedPlayer = null; // 记录被咆哮棋子的所属方
-        this.hasStunnedPlayerMoved = false; // 记录被咆哮方是否已经行动
+        // 添加已死亡棋子记录
+        this.deadPieces = {
+            red: [],
+            blue: []
+        };
+        
+        this.stunned = null;
+        this.stunnedPlayer = null;
+        this.hasStunnedPlayerMoved = false;
+        this.tigerJumpMode = false; // 是否在虎跃模式
+        this.tigerJumpUsed = false; // 本回合是否已经使用过虎跃
+        this.leopardDiagonalMode = false; // 是否在斜扑模式
+        this.leopardDiagonalUsed = false; // 本回合是否已经使用过斜扑
         this.init();
         this.initSkills();
     }
@@ -165,15 +177,39 @@ class AnimalChess {
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(piece.type, x, y);
 
-            // 如果是猫且有两命，添加标记
-            if (piece.type === '猫') {
+            // 添加技能标识
+            if (['猫', '狗', '虎', '豹'].includes(piece.type)) {
                 const color = piece.player === '红方' ? 'red' : 'blue';
-                if (this.skills[color].cat.active && !this.skills[color].cat.used) {
-                    // 在棋子上方绘制小圆点表示两命
+                const skillType = piece.type === '猫' ? 'cat' : 
+                                piece.type === '狗' ? 'dog' : 
+                                piece.type === '虎' ? 'tiger' : 'leopard';
+                const skill = this.skills[color][skillType];
+
+                if (skill.active) {
+                    // 绘制技能图标
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y - this.cellSize/3, 5, 0, Math.PI * 2);
-                    this.ctx.fillStyle = '#32CD32'; // 绿色圆点表示有两命
+                    this.ctx.arc(x + this.cellSize/3, y - this.cellSize/3, 8, 0, Math.PI * 2);
+                    
+                    if (skill.used) {
+                        this.ctx.fillStyle = '#808080';
+                    } else {
+                        this.ctx.fillStyle = piece.type === '猫' ? '#ff69b4' : 
+                                           piece.type === '狗' ? '#ffd700' : 
+                                           piece.type === '虎' ? '#ff4500' :
+                                           '#9932cc'; // 豹子斜扑为紫色
+                    }
                     this.ctx.fill();
+
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = '12px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(
+                        piece.type === '猫' ? '复' : 
+                        piece.type === '狗' ? '咆' : 
+                        piece.type === '虎' ? '跃' : '扑',
+                        x + this.cellSize/3, y - this.cellSize/3
+                    );
                 }
             }
         }
@@ -273,27 +309,23 @@ class AnimalChess {
                 if (this.canMove(selectedRow, selectedCol, row, col)) {
                     const targetPiece = this.board[row][col];
                     
+                    // 检查是否是斜扑移动
+                    const isDiagonalMove = Math.abs(row - selectedRow) === 1 && 
+                                         Math.abs(col - selectedCol) === 1;
+                    
+                    if (isDiagonalMove) {
+                        this.leopardDiagonalUsed = true;
+                    }
+
                     // 如果目标位置有对方的棋子，检查是否可以吃掉
                     if (targetPiece && targetPiece.revealed && 
                         targetPiece.player !== this.currentPlayer && 
                         this.canEat(selectedPiece, targetPiece)) {
                         
-                        // 处理猫的两命技能
-                        if (targetPiece.type === '猫') {
-                            const color = targetPiece.player === '红方' ? 'red' : 'blue';
-                            if (this.skills[color].cat.active && !this.skills[color].cat.used &&
-                                !(selectedPiece.type === '狮' && this.skills[selectedPiece.player === '红方' ? 'red' : 'blue'].lion.active)) {
-                                this.skills[color].cat.used = true;
-                                document.getElementById(`${color}-cat-skill`).classList.add('used');
-                                alert('猫使用了两命技能，免疫了这次伤害！');
-                                this.handleTurnEnd();
-                                this.selectedPiece = null;
-                                this.drawBoard();
-                                return;
-                            }
-                        }
+                        // 记录被吃的棋子
+                        this.handleCapture(selectedRow, selectedCol, row, col);
                         
-                        // 正常的吃子逻辑
+                        // 执行吃子操作
                         this.board[row][col] = selectedPiece;
                         this.board[selectedRow][selectedCol] = null;
                         this.handleTurnEnd();
@@ -323,10 +355,29 @@ class AnimalChess {
     }
 
     canMove(fromRow, fromCol, toRow, toCol) {
-        // 只能横向或纵向移动一格
         const rowDiff = Math.abs(toRow - fromRow);
         const colDiff = Math.abs(toCol - fromCol);
-        return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        
+        // 普通移动：只能横向或纵向移动一格
+        if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+            return true;
+        }
+        
+        // 虎跃模式：可以跳过一格
+        if (this.tigerJumpMode && !this.tigerJumpUsed) {
+            if ((rowDiff === 2 && colDiff === 0) || (rowDiff === 0 && colDiff === 2)) {
+                return true;
+            }
+        }
+
+        // 斜扑模式：可以斜着移动一格
+        if (this.leopardDiagonalMode && !this.leopardDiagonalUsed) {
+            if (rowDiff === 1 && colDiff === 1) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     highlightPiece(row, col) {
@@ -345,7 +396,7 @@ class AnimalChess {
     initSkills() {
         // 初始化技能点击事件
         ['red', 'blue'].forEach(color => {
-            ['cat', 'lion', 'dog'].forEach(animal => {
+            ['cat', 'dog', 'tiger', 'leopard'].forEach(animal => {
                 const skillBox = document.getElementById(`${color}-${animal}-skill`);
                 skillBox.addEventListener('click', () => this.handleSkillClick(color, animal));
             });
@@ -358,9 +409,130 @@ class AnimalChess {
         
         if (!skill.active || skill.used) return;
 
-        if (animal === 'dog' && !skill.used) {
-            // 处理咆哮技能
+        // 检查对应的棋子是否还活着
+        let animalAlive = false;
+        for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+                const piece = this.board[i][j];
+                if (piece && piece.type === (animal === 'cat' ? '猫' : animal === 'dog' ? '狗' : animal === 'tiger' ? '虎' : '豹') && 
+                    piece.player === `${color === 'red' ? '红' : '蓝'}方`) {
+                    animalAlive = true;
+                    break;
+                }
+            }
+        }
+
+        if (!animalAlive) {
+            alert('该棋子已阵亡，无法使用技能！');
+            return;
+        }
+
+        if (animal === 'dog') {
             this.activateDogSkill(color);
+        } else if (animal === 'cat') {
+            this.activateReviveSkill(color);
+        } else if (animal === 'tiger') {
+            this.activateTigerJump(color);
+        } else if (animal === 'leopard') {
+            this.activateLeopardDiagonal(color);
+        }
+    }
+
+    activateReviveSkill(color) {
+        const deadPieces = this.deadPieces[color];
+        if (deadPieces.length === 0) {
+            alert('没有可以复活的棋子！');
+            return;
+        }
+
+        // 创建选择框
+        const selectBox = document.createElement('div');
+        selectBox.style.position = 'fixed';
+        selectBox.style.top = '50%';
+        selectBox.style.left = '50%';
+        selectBox.style.transform = 'translate(-50%, -50%)';
+        selectBox.style.background = 'white';
+        selectBox.style.padding = '20px';
+        selectBox.style.borderRadius = '10px';
+        selectBox.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+        selectBox.style.zIndex = '1000';
+
+        const title = document.createElement('h3');
+        title.textContent = '选择要复活的棋子：';
+        selectBox.appendChild(title);
+
+        const select = document.createElement('select');
+        deadPieces.forEach((piece, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = piece.type;
+            select.appendChild(option);
+        });
+        selectBox.appendChild(select);
+
+        const button = document.createElement('button');
+        button.textContent = '确定';
+        button.style.marginTop = '10px';
+        button.onclick = () => {
+            const selectedPiece = deadPieces[select.value];
+            this.placePieceOnBoard(selectedPiece, color);
+            document.body.removeChild(selectBox);
+            
+            // 标记技能为已使用
+            this.skills[color].cat.used = true;
+            document.getElementById(`${color}-cat-skill`).classList.add('used');
+        };
+        selectBox.appendChild(button);
+
+        document.body.appendChild(selectBox);
+    }
+
+    placePieceOnBoard(piece, color) {
+        const emptySpaces = [];
+        for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+                if (!this.board[i][j]) {
+                    emptySpaces.push([i, j]);
+                }
+            }
+        }
+
+        if (emptySpaces.length === 0) {
+            alert('棋盘已满，无法复活棋子！');
+            return;
+        }
+
+        // 随机选择一个空位
+        const [row, col] = emptySpaces[Math.floor(Math.random() * emptySpaces.length)];
+        this.board[row][col] = {
+            ...piece,
+            revealed: false
+        };
+
+        // 从死亡列表中移除该棋子
+        const index = this.deadPieces[color].findIndex(p => p.type === piece.type);
+        this.deadPieces[color].splice(index, 1);
+
+        alert(`${piece.type}已复活并暗置在棋盘上`);
+        this.drawBoard();
+    }
+
+    // 修改吃子逻辑，添加死亡棋子记录
+    handleCapture(fromRow, fromCol, toRow, toCol) {
+        const capturedPiece = this.board[toRow][toCol];
+        const color = capturedPiece.player === '红方' ? 'red' : 'blue';
+        this.deadPieces[color].push(capturedPiece);
+        
+        if (capturedPiece.type === '狗' || capturedPiece.type === '猫' || capturedPiece.type === '虎') {
+            const skillType = capturedPiece.type === '狗' ? 'dog' : 
+                            capturedPiece.type === '猫' ? 'cat' : 'tiger';
+            const skillBox = document.getElementById(`${color}-${skillType}-skill`);
+            
+            this.skills[color][skillType].active = false;
+            this.skills[color][skillType].used = false;
+            
+            skillBox.classList.remove('active', 'used');
+            skillBox.querySelector('.skill-status').textContent = '未激活';
         }
     }
 
@@ -401,9 +573,10 @@ class AnimalChess {
         const color = piece.player === '红方' ? 'red' : 'blue';
         
         // 激活对应技能
-        if (['猫', '狮', '狗'].includes(piece.type)) {
+        if (['猫', '狗', '虎', '豹'].includes(piece.type)) {
             const skillType = piece.type === '猫' ? 'cat' : 
-                            piece.type === '狮' ? 'lion' : 'dog';
+                             piece.type === '狗' ? 'dog' : 
+                             piece.type === '虎' ? 'tiger' : 'leopard';
             this.skills[color][skillType].active = true;
             const skillBox = document.getElementById(`${color}-${skillType}-skill`);
             skillBox.classList.add('active');
@@ -420,7 +593,7 @@ class AnimalChess {
         
         // 重置技能状态
         ['red', 'blue'].forEach(color => {
-            ['cat', 'lion', 'dog'].forEach(animal => {
+            ['cat', 'dog', 'tiger', 'leopard'].forEach(animal => {
                 this.skills[color][animal] = { active: false, used: false };
                 const skillBox = document.getElementById(`${color}-${animal}-skill`);
                 skillBox.classList.remove('active', 'used');
@@ -430,6 +603,10 @@ class AnimalChess {
         this.stunned = null;
         this.stunnedPlayer = null;
         this.hasStunnedPlayerMoved = false;
+        this.tigerJumpMode = false;
+        this.tigerJumpUsed = false;
+        this.leopardDiagonalMode = false;
+        this.leopardDiagonalUsed = false;
     }
 
     // 添加新方法来处理玩家行动后的状态更新
@@ -447,9 +624,37 @@ class AnimalChess {
             this.drawBoard();
         }
 
+        // 回合结束时重置虎跃状态
+        this.tigerJumpMode = false;
+        this.tigerJumpUsed = false;
+
+        // 回合结束时重置斜扑状态
+        this.leopardDiagonalMode = false;
+        this.leopardDiagonalUsed = false;
+
         // 切换玩家
         this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
         this.updateCurrentPlayer();
+    }
+
+    activateTigerJump(color) {
+        this.tigerJumpMode = true;
+        this.tigerJumpUsed = false;
+        alert('虎跃模式已激活，本回合所有己方棋子可以跳跃移动');
+        
+        // 标记技能为已使用
+        this.skills[color].tiger.used = true;
+        document.getElementById(`${color}-tiger-skill`).classList.add('used');
+    }
+
+    activateLeopardDiagonal(color) {
+        this.leopardDiagonalMode = true;
+        this.leopardDiagonalUsed = false;
+        alert('斜扑模式已激活，本回合可以斜着移动一次');
+        
+        // 标记技能为已使用
+        this.skills[color].leopard.used = true;
+        document.getElementById(`${color}-leopard-skill`).classList.add('used');
     }
 }
 
