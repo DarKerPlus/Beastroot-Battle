@@ -140,7 +140,7 @@ button:active {
 }
 
 .skills-container {
-    display: flex;
+    display: none; /* 默认隐藏 */
     flex-direction: column;
     gap: 10px;
     padding: 15px;
@@ -148,6 +148,10 @@ button:active {
     background: rgba(255, 255, 255, 0.9);
     min-width: 120px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.spell-mode .skills-container {
+    display: flex; /* 符咒模式时显示 */
 }
 
 .red-skills {
@@ -231,4 +235,49 @@ button:active {
 .board-container.blue-turn::before {
     box-shadow: 5px -5px 15px rgba(25, 118, 210, 0.5),
                 5px 5px 15px rgba(25, 118, 210, 0.5);
+}
+
+/* 添加模式选择样式 */
+.mode-selection {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
+                url('https://images.unsplash.com/photo-1536147116438-62679a5e01f2?auto=format&fit=crop&w=1920') center/cover;
+}
+
+.mode-buttons {
+    display: flex;
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.mode-button {
+    padding: 30px;
+    width: 300px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Ma Shan Zheng', cursive;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.mode-button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.mode-button h2 {
+    color: #2c5530;
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+}
+
+.mode-button p {
+    color: #666;
+    margin: 0;
+    font-size: 1.1em;
 } 

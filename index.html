@@ -8,7 +8,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="jungle-background">
+    <!-- 添加模式选择界面 -->
+    <div class="mode-selection" id="mode-selection">
+        <div class="container">
+            <h1>丛林斗兽棋</h1>
+            <div class="mode-buttons">
+                <button id="classic-mode" class="mode-button">
+                    <h2>经典模式</h2>
+                    <p>传统斗兽棋玩法，没有特殊技能</p>
+                </button>
+                <button id="spell-mode" class="mode-button">
+                    <h2>符咒模式</h2>
+                    <p>每个动物都拥有独特技能的创新玩法</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 原有的游戏界面，添加 id 和初始隐藏 -->
+    <div class="jungle-background" id="game-container" style="display: none;">
         <div class="container">
             <h1>丛林斗兽棋</h1>
             <div class="game-container">

@@ -1,5 +1,6 @@
 class AnimalChess {
-    constructor() {
+    constructor(mode) {
+        this.mode = mode; // 'classic' 或 'spell'
         this.canvas = document.getElementById('board');
         this.ctx = this.canvas.getContext('2d');
         this.currentPlayer = '红方';
@@ -55,6 +56,11 @@ class AnimalChess {
         this.selectedForEscape = null; // 选中要传送的棋子
         this.init();
         this.initSkills();
+
+        // 根据模式初始化技能
+        if (this.mode === 'spell') {
+            this.initSkills();
+        }
     }
 
     init() {
@@ -185,8 +191,8 @@ class AnimalChess {
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(piece.type, x, y);
 
-            // 添加技能标识
-            if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
+            // 只在符咒模式下绘制技能标识
+            if (this.mode === 'spell' && ['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
                 const color = piece.player === '红方' ? 'red' : 'blue';
                 const skillType = piece.type === '猫' ? 'cat' : 
                                 piece.type === '狗' ? 'dog' : 
@@ -427,6 +433,7 @@ class AnimalChess {
     }
 
     handleSkillClick(color, animal) {
+        if (this.mode !== 'spell') return; // 非符咒模式不响应技能点击
         if (this.currentPlayer !== `${color === 'red' ? '红' : '蓝'}方`) return;
         const skill = this.skills[color][animal];
         
@@ -603,19 +610,21 @@ class AnimalChess {
         if (!piece || piece.revealed) return;
         
         piece.revealed = true;
-        const color = piece.player === '红方' ? 'red' : 'blue';
         
-        // 激活对应技能
-        if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
-            const skillType = piece.type === '猫' ? 'cat' : 
-                             piece.type === '狗' ? 'dog' : 
-                             piece.type === '虎' ? 'tiger' : 
-                             piece.type === '豹' ? 'leopard' : 
-                             piece.type === '狼' ? 'wolf' : 'rat';
-            this.skills[color][skillType].active = true;
-            const skillBox = document.getElementById(`${color}-${skillType}-skill`);
-            skillBox.classList.add('active');
-            skillBox.querySelector('.skill-status').textContent = '已激活';
+        // 只在符咒模式下激活技能
+        if (this.mode === 'spell') {
+            const color = piece.player === '红方' ? 'red' : 'blue';
+            if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
+                const skillType = piece.type === '猫' ? 'cat' : 
+                                 piece.type === '狗' ? 'dog' : 
+                                 piece.type === '虎' ? 'tiger' : 
+                                 piece.type === '豹' ? 'leopard' : 
+                                 piece.type === '狼' ? 'wolf' : 'rat';
+                this.skills[color][skillType].active = true;
+                const skillBox = document.getElementById(`${color}-${skillType}-skill`);
+                skillBox.classList.add('active');
+                skillBox.querySelector('.skill-status').textContent = '已激活';
+            }
         }
     }
 
@@ -777,4 +786,24 @@ class AnimalChess {
 }
 
 // 初始化游戏
-new AnimalChess(); 
+document.addEventListener('DOMContentLoaded', () => {
+    const modeSelection = document.getElementById('mode-selection');
+    const gameContainer = document.getElementById('game-container');
+    let game = null;
+
+    // 经典模式按钮点击事件
+    document.getElementById('classic-mode').addEventListener('click', () => {
+        modeSelection.style.display = 'none';
+        gameContainer.style.display = 'block';
+        document.body.classList.remove('spell-mode');
+        game = new AnimalChess('classic');
+    });
+
+    // 符咒模式按钮点击事件
+    document.getElementById('spell-mode').addEventListener('click', () => {
+        modeSelection.style.display = 'none';
+        gameContainer.style.display = 'block';
+        document.body.classList.add('spell-mode');
+        game = new AnimalChess('spell');
+    });
+}); 
