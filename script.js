@@ -22,13 +22,17 @@ class AnimalChess {
                 cat: { active: false, used: false },
                 dog: { active: false, used: false },
                 tiger: { active: false, used: false },
-                leopard: { active: false, used: false }
+                leopard: { active: false, used: false },
+                wolf: { active: false, used: false },
+                rat: { active: false, used: false }
             },
             blue: {
                 cat: { active: false, used: false },
                 dog: { active: false, used: false },
                 tiger: { active: false, used: false },
-                leopard: { active: false, used: false }
+                leopard: { active: false, used: false },
+                wolf: { active: false, used: false },
+                rat: { active: false, used: false }
             }
         };
         
@@ -45,6 +49,10 @@ class AnimalChess {
         this.tigerJumpUsed = false; // 本回合是否已经使用过虎跃
         this.leopardDiagonalMode = false; // 是否在斜扑模式
         this.leopardDiagonalUsed = false; // 本回合是否已经使用过斜扑
+        this.bloodlustMode = false; // 是否在嗜血模式
+        this.bloodlustPlayer = null; // 哪个玩家在嗜血模式
+        this.ratEscapeMode = false; // 是否在鼠遁模式
+        this.selectedForEscape = null; // 选中要传送的棋子
         this.init();
         this.initSkills();
     }
@@ -178,11 +186,13 @@ class AnimalChess {
             this.ctx.fillText(piece.type, x, y);
 
             // 添加技能标识
-            if (['猫', '狗', '虎', '豹'].includes(piece.type)) {
+            if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
                 const color = piece.player === '红方' ? 'red' : 'blue';
                 const skillType = piece.type === '猫' ? 'cat' : 
                                 piece.type === '狗' ? 'dog' : 
-                                piece.type === '虎' ? 'tiger' : 'leopard';
+                                piece.type === '虎' ? 'tiger' : 
+                                piece.type === '豹' ? 'leopard' : 
+                                piece.type === '狼' ? 'wolf' : 'rat';
                 const skill = this.skills[color][skillType];
 
                 if (skill.active) {
@@ -196,7 +206,9 @@ class AnimalChess {
                         this.ctx.fillStyle = piece.type === '猫' ? '#ff69b4' : 
                                            piece.type === '狗' ? '#ffd700' : 
                                            piece.type === '虎' ? '#ff4500' :
-                                           '#9932cc'; // 豹子斜扑为紫色
+                                           piece.type === '豹' ? '#9932cc' :
+                                           piece.type === '狼' ? '#8b0000' :
+                                           '#00ff00'; // 鼠的鼠遁为绿色
                     }
                     this.ctx.fill();
 
@@ -207,7 +219,9 @@ class AnimalChess {
                     this.ctx.fillText(
                         piece.type === '猫' ? '复' : 
                         piece.type === '狗' ? '咆' : 
-                        piece.type === '虎' ? '跃' : '扑',
+                        piece.type === '虎' ? '跃' : 
+                        piece.type === '豹' ? '扑' : 
+                        piece.type === '狼' ? '血' : '遁',
                         x + this.cellSize/3, y - this.cellSize/3
                     );
                 }
@@ -328,6 +342,15 @@ class AnimalChess {
                         // 执行吃子操作
                         this.board[row][col] = selectedPiece;
                         this.board[selectedRow][selectedCol] = null;
+
+                        // 如果在嗜血模式下成功击杀，不切换玩家
+                        if (this.bloodlustMode && this.bloodlustPlayer === this.currentPlayer) {
+                            alert('嗜血触发，获得额外回合！');
+                            this.selectedPiece = null;
+                            this.drawBoard();
+                            return;
+                        }
+
                         this.handleTurnEnd();
                         this.checkWinner();
                     } 
@@ -396,7 +419,7 @@ class AnimalChess {
     initSkills() {
         // 初始化技能点击事件
         ['red', 'blue'].forEach(color => {
-            ['cat', 'dog', 'tiger', 'leopard'].forEach(animal => {
+            ['cat', 'dog', 'tiger', 'leopard', 'wolf', 'rat'].forEach(animal => {
                 const skillBox = document.getElementById(`${color}-${animal}-skill`);
                 skillBox.addEventListener('click', () => this.handleSkillClick(color, animal));
             });
@@ -414,7 +437,7 @@ class AnimalChess {
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 const piece = this.board[i][j];
-                if (piece && piece.type === (animal === 'cat' ? '猫' : animal === 'dog' ? '狗' : animal === 'tiger' ? '虎' : '豹') && 
+                if (piece && piece.type === (animal === 'cat' ? '猫' : animal === 'dog' ? '狗' : animal === 'tiger' ? '虎' : animal === 'leopard' ? '豹' : animal === 'wolf' ? '狼' : '鼠') && 
                     piece.player === `${color === 'red' ? '红' : '蓝'}方`) {
                     animalAlive = true;
                     break;
@@ -435,6 +458,10 @@ class AnimalChess {
             this.activateTigerJump(color);
         } else if (animal === 'leopard') {
             this.activateLeopardDiagonal(color);
+        } else if (animal === 'wolf') {
+            this.activateBloodlust(color);
+        } else if (animal === 'rat') {
+            this.activateRatEscape(color);
         }
     }
 
@@ -523,14 +550,20 @@ class AnimalChess {
         const color = capturedPiece.player === '红方' ? 'red' : 'blue';
         this.deadPieces[color].push(capturedPiece);
         
-        if (capturedPiece.type === '狗' || capturedPiece.type === '猫' || capturedPiece.type === '虎') {
-            const skillType = capturedPiece.type === '狗' ? 'dog' : 
-                            capturedPiece.type === '猫' ? 'cat' : 'tiger';
-            const skillBox = document.getElementById(`${color}-${skillType}-skill`);
+        // 检查所有可能的技能类型
+        if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(capturedPiece.type)) {
+            const skillType = capturedPiece.type === '猫' ? 'cat' : 
+                             capturedPiece.type === '狗' ? 'dog' : 
+                             capturedPiece.type === '虎' ? 'tiger' : 
+                             capturedPiece.type === '豹' ? 'leopard' : 
+                             capturedPiece.type === '狼' ? 'wolf' : 'rat';
             
+            // 重置技能状态
+            const skillBox = document.getElementById(`${color}-${skillType}-skill`);
             this.skills[color][skillType].active = false;
             this.skills[color][skillType].used = false;
             
+            // 更新技能显示
             skillBox.classList.remove('active', 'used');
             skillBox.querySelector('.skill-status').textContent = '未激活';
         }
@@ -573,10 +606,12 @@ class AnimalChess {
         const color = piece.player === '红方' ? 'red' : 'blue';
         
         // 激活对应技能
-        if (['猫', '狗', '虎', '豹'].includes(piece.type)) {
+        if (['猫', '狗', '虎', '豹', '狼', '鼠'].includes(piece.type)) {
             const skillType = piece.type === '猫' ? 'cat' : 
                              piece.type === '狗' ? 'dog' : 
-                             piece.type === '虎' ? 'tiger' : 'leopard';
+                             piece.type === '虎' ? 'tiger' : 
+                             piece.type === '豹' ? 'leopard' : 
+                             piece.type === '狼' ? 'wolf' : 'rat';
             this.skills[color][skillType].active = true;
             const skillBox = document.getElementById(`${color}-${skillType}-skill`);
             skillBox.classList.add('active');
@@ -593,7 +628,7 @@ class AnimalChess {
         
         // 重置技能状态
         ['red', 'blue'].forEach(color => {
-            ['cat', 'dog', 'tiger', 'leopard'].forEach(animal => {
+            ['cat', 'dog', 'tiger', 'leopard', 'wolf', 'rat'].forEach(animal => {
                 this.skills[color][animal] = { active: false, used: false };
                 const skillBox = document.getElementById(`${color}-${animal}-skill`);
                 skillBox.classList.remove('active', 'used');
@@ -607,6 +642,10 @@ class AnimalChess {
         this.tigerJumpUsed = false;
         this.leopardDiagonalMode = false;
         this.leopardDiagonalUsed = false;
+        this.bloodlustMode = false;
+        this.bloodlustPlayer = null;
+        this.ratEscapeMode = false;
+        this.selectedForEscape = null;
     }
 
     // 添加新方法来处理玩家行动后的状态更新
@@ -632,6 +671,12 @@ class AnimalChess {
         this.leopardDiagonalMode = false;
         this.leopardDiagonalUsed = false;
 
+        // 如果切换玩家，且当前玩家不是嗜血模式的玩家，则结束嗜血模式
+        if (this.bloodlustMode && this.bloodlustPlayer !== this.currentPlayer) {
+            this.bloodlustMode = false;
+            this.bloodlustPlayer = null;
+        }
+
         // 切换玩家
         this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
         this.updateCurrentPlayer();
@@ -655,6 +700,79 @@ class AnimalChess {
         // 标记技能为已使用
         this.skills[color].leopard.used = true;
         document.getElementById(`${color}-leopard-skill`).classList.add('used');
+    }
+
+    activateBloodlust(color) {
+        this.bloodlustMode = true;
+        this.bloodlustPlayer = color === 'red' ? '红方' : '蓝方';
+        alert('嗜血模式已激活，击杀敌方棋子将获得额外回合！');
+        
+        // 标记技能为已使用
+        this.skills[color].wolf.used = true;
+        document.getElementById(`${color}-wolf-skill`).classList.add('used');
+    }
+
+    activateRatEscape(color) {
+        this.ratEscapeMode = true;
+        alert('请选择要传送的己方棋子');
+        this.canvas.style.cursor = 'crosshair';
+
+        const selectPieceHandler = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const col = Math.floor(x / this.cellSize);
+            const row = Math.floor(y / this.cellSize);
+            
+            if (row >= 0 && row < 4 && col >= 0 && col < 4) {
+                const piece = this.board[row][col];
+                if (piece && piece.revealed && piece.player === `${color === 'red' ? '红' : '蓝'}方`) {
+                    this.selectedForEscape = [row, col];
+                    this.canvas.removeEventListener('click', selectPieceHandler);
+                    
+                    // 选择目标位置
+                    alert('请选择要传送到的空格子');
+                    this.canvas.addEventListener('click', selectTargetHandler);
+                }
+            }
+        };
+
+        const selectTargetHandler = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const col = Math.floor(x / this.cellSize);
+            const row = Math.floor(y / this.cellSize);
+            
+            if (row >= 0 && row < 4 && col >= 0 && col < 4) {
+                if (!this.board[row][col]) { // 目标位置必须是空的
+                    const [fromRow, fromCol] = this.selectedForEscape;
+                    const piece = this.board[fromRow][fromCol];
+                    
+                    // 执行传送
+                    this.board[row][col] = piece;
+                    this.board[fromRow][fromCol] = null;
+                    
+                    // 标记技能为已使用
+                    this.skills[color].rat.used = true;
+                    document.getElementById(`${color}-rat-skill`).classList.add('used');
+                    
+                    // 重置状态
+                    this.ratEscapeMode = false;
+                    this.selectedForEscape = null;
+                    this.canvas.style.cursor = 'default';
+                    this.canvas.removeEventListener('click', selectTargetHandler);
+                    
+                    alert('传送成功！');
+                    this.handleTurnEnd();
+                    this.drawBoard();
+                } else {
+                    alert('只能传送到空格子！');
+                }
+            }
+        };
+
+        this.canvas.addEventListener('click', selectPieceHandler);
     }
 }
 
