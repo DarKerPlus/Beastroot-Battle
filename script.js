@@ -54,6 +54,7 @@ class AnimalChess {
         this.bloodlustPlayer = null; // 哪个玩家在嗜血模式
         this.ratEscapeMode = false; // 是否在鼠遁模式
         this.selectedForEscape = null; // 选中要传送的棋子
+        this.ratEscapeTarget = null; // 记录获得鼠遁效果的棋子位置
         this.init();
         this.initSkills();
 
@@ -221,7 +222,7 @@ class AnimalChess {
                     this.ctx.fillStyle = 'white';
                     this.ctx.font = '12px Arial';
                     this.ctx.textAlign = 'center';
-                    this.ctx.textBaseline = 'middle';
+                    this.textBaseline = 'middle';
                     this.ctx.fillText(
                         piece.type === '猫' ? '复' : 
                         piece.type === '狗' ? '咆' : 
@@ -238,6 +239,16 @@ class AnimalChess {
         this.ctx.shadowBlur = 0;
         this.ctx.shadowOffsetX = 0;
         this.ctx.shadowOffsetY = 0;
+
+        // 如果是获得鼠遁效果的棋子，添加特殊标记
+        if (this.ratEscapeTarget && 
+            this.ratEscapeTarget[0] === row && 
+            this.ratEscapeTarget[1] === col) {
+            this.ctx.beginPath();
+            this.ctx.arc(x, y - this.cellSize/4, 5, 0, Math.PI * 2);
+            this.ctx.fillStyle = '#00ff00';
+            this.ctx.fill();
+        }
     }
 
     canEat(attacker, defender) {
@@ -381,9 +392,31 @@ class AnimalChess {
                 this.highlightPiece(row, col);
             }
         }
+
+        // 在移动成功后添加
+        if (this.ratEscapeTarget && 
+            this.ratEscapeTarget[0] === row && 
+            this.ratEscapeTarget[1] === col) {
+            // 绘制特效或提示信息表示使用了鼠遁效果
+            alert('使用了鼠遁效果！');
+        }
     }
 
     canMove(fromRow, fromCol, toRow, toCol) {
+                    const piece = this.board[fromRow][fromCol];
+                    
+        // 检查是否是获得鼠遁效果的棋子
+        if (this.ratEscapeTarget && 
+            this.ratEscapeTarget[0] === fromRow && 
+            this.ratEscapeTarget[1] === fromCol) {
+            // 鼠遁效果：可以移动到任意空格，但不能吃子
+            if (!this.board[toRow][toCol]) {
+                this.ratEscapeTarget = null; // 使用后效果消失
+                return true;
+            }
+            return false;
+        }
+
         const rowDiff = Math.abs(toRow - fromRow);
         const colDiff = Math.abs(toCol - fromCol);
         
@@ -655,6 +688,7 @@ class AnimalChess {
         this.bloodlustPlayer = null;
         this.ratEscapeMode = false;
         this.selectedForEscape = null;
+        this.ratEscapeTarget = null;
     }
 
     // 添加新方法来处理玩家行动后的状态更新
@@ -722,8 +756,7 @@ class AnimalChess {
     }
 
     activateRatEscape(color) {
-        this.ratEscapeMode = true;
-        alert('请选择要传送的己方棋子');
+        alert('请选择要赋予鼠遁效果的己方棋子');
         this.canvas.style.cursor = 'crosshair';
 
         const selectPieceHandler = (e) => {
@@ -735,48 +768,17 @@ class AnimalChess {
             
             if (row >= 0 && row < 4 && col >= 0 && col < 4) {
                 const piece = this.board[row][col];
-                if (piece && piece.revealed && piece.player === `${color === 'red' ? '红' : '蓝'}方`) {
-                    this.selectedForEscape = [row, col];
-                    this.canvas.removeEventListener('click', selectPieceHandler);
-                    
-                    // 选择目标位置
-                    alert('请选择要传送到的空格子');
-                    this.canvas.addEventListener('click', selectTargetHandler);
-                }
-            }
-        };
-
-        const selectTargetHandler = (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const col = Math.floor(x / this.cellSize);
-            const row = Math.floor(y / this.cellSize);
-            
-            if (row >= 0 && row < 4 && col >= 0 && col < 4) {
-                if (!this.board[row][col]) { // 目标位置必须是空的
-                    const [fromRow, fromCol] = this.selectedForEscape;
-                    const piece = this.board[fromRow][fromCol];
-                    
-                    // 执行传送
-                    this.board[row][col] = piece;
-                    this.board[fromRow][fromCol] = null;
+                if (piece && piece.revealed && piece.player === `${color === 'red' ? '红方' : '蓝'}方`) {
+                    this.ratEscapeTarget = [row, col];
                     
                     // 标记技能为已使用
                     this.skills[color].rat.used = true;
                     document.getElementById(`${color}-rat-skill`).classList.add('used');
                     
-                    // 重置状态
-                    this.ratEscapeMode = false;
-                    this.selectedForEscape = null;
+                    alert(`${piece.type}获得了鼠遁效果，下次行动时可以移动到任意空格！`);
                     this.canvas.style.cursor = 'default';
-                    this.canvas.removeEventListener('click', selectTargetHandler);
-                    
-                    alert('传送成功！');
-                    this.handleTurnEnd();
+                    this.canvas.removeEventListener('click', selectPieceHandler);
                     this.drawBoard();
-                } else {
-                    alert('只能传送到空格子！');
                 }
             }
         };
