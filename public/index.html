@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>丛林斗兽棋</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 游戏模式选择 -->
+        <div id="mode-selection">
+            <h1>丛林斗兽棋</h1>
+            <div class="mode-buttons">
+                <button id="classic-mode">经典模式</button>
+                <button id="spell-mode">符咒模式</button>
+            </div>
+        </div>
+
+        <!-- 房间控制 -->
+        <div id="room-controls" style="display: none;">
+            <div class="room-buttons">
+                <button id="create-room">创建房间</button>
+                <div class="join-room">
+                    <input type="text" id="room-code" placeholder="输入房间码">
+                    <button id="join-room">加入房间</button>
+                </div>
+            </div>
+            <div id="room-info" style="display: none;">
+                <p>房间码: <span id="current-room-code"></span></p>
+                <p id="waiting-message">等待玩家加入...</p>
+            </div>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="game-board" style="display: none;">
+            <div class="game-status">
+                <span>当前回合: <span id="current-player" class="red">红方</span></span>
+            </div>
+            <div class="board-container">
+                <canvas id="board" width="400" height="400"></canvas>
+            </div>
+            <div class="controls">
+                <button id="restart">重新开始</button>
+            </div>
+        </div>
+
+        <!-- 技能面板 -->
+        <div id="skill-panel" class="skill-panel" style="display: none;">
+            <div class="red-skills">
+                <div id="red-cat-skill" class="skill-box">
+                    <span class="skill-name">猫 - 猫咪复活</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="red-dog-skill" class="skill-box">
+                    <span class="skill-name">狗 - 狗吠咆哮</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="red-tiger-skill" class="skill-box">
+                    <span class="skill-name">虎 - 虎啸跃击</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="red-leopard-skill" class="skill-box">
+                    <span class="skill-name">豹 - 豹影斜扑</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="red-wolf-skill" class="skill-box">
+                    <span class="skill-name">狼 - 狼性嗜血</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="red-rat-skill" class="skill-box">
+                    <span class="skill-name">鼠 - 鼠遁</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+            </div>
+            <div class="blue-skills">
+                <div id="blue-cat-skill" class="skill-box">
+                    <span class="skill-name">猫 - 猫咪复活</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="blue-dog-skill" class="skill-box">
+                    <span class="skill-name">狗 - 狗吠咆哮</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="blue-tiger-skill" class="skill-box">
+                    <span class="skill-name">虎 - 虎啸跃击</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="blue-leopard-skill" class="skill-box">
+                    <span class="skill-name">豹 - 豹影斜扑</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="blue-wolf-skill" class="skill-box">
+                    <span class="skill-name">狼 - 狼性嗜血</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+                <div id="blue-rat-skill" class="skill-box">
+                    <span class="skill-name">鼠 - 鼠遁</span>
+                    <span class="skill-status">未激活</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
