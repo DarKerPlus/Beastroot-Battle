@@ -60,7 +60,7 @@ class AnimalChess {
         // 绑定房间相关事件
         document.getElementById('create-room').addEventListener('click', () => this.createRoom());
         document.getElementById('join-room').addEventListener('click', () => {
-            console.log('调用 joinRoom 方法');  // 添加日志以确认调用
+            console.log('调用 joinRoom 方法');
             this.joinRoom();
         });
 
@@ -339,6 +339,8 @@ class AnimalChess {
     // Socket.io 相关方法
     initSocketEvents() {
         this.socket.on('roomCreated', (data) => {
+            console.log('收到 roomCreated 事件');
+            console.log(`服务器返回的数据: ${JSON.stringify(data)}`);
             this.roomId = data.roomId;
             this.playerId = data.playerId;
             this.playerColor = '红方';  // 创建房间的玩家是红方
@@ -349,10 +351,14 @@ class AnimalChess {
         });
 
         this.socket.on('gameStart', (data) => {
-            console.log(`游戏开始时的 roomId: ${this.roomId}`);  // 添加日志记录 roomId
-            console.log(`游戏开始时接收到的数据: ${JSON.stringify(data)}`);  // 打印接收到的完整数据
+            console.log('收到 gameStart 事件');
+            console.log('游戏开始时的 roomId:', this.roomId);
+            console.log('游戏开始时接收到的数据:', data);
+            console.log('当前 this.roomId:', this.roomId);
+            console.log('当前 this.playerId:', this.playerId);
+            console.log('当前 this.playerColor:', this.playerColor);
             if (!this.roomId) {
-                console.error('游戏开始时 roomId 未定义，无法继续');
+                console.log('游戏开始时 roomId 未定义，无法继续');
                 return;
             }
             // 设置玩家颜色
@@ -392,6 +398,8 @@ class AnimalChess {
 
         // 添加游戏状态更新事件
         this.socket.on('gameStateUpdate', (data) => {
+            console.log('收到 gameStateUpdate 事件');
+            console.log(`更新的游戏状态: ${JSON.stringify(data)}`);
             if (data.gameState) {
                 this.board = data.gameState.board;
                 this.currentPlayer = data.gameState.currentPlayer;
@@ -400,10 +408,14 @@ class AnimalChess {
         });
 
         this.socket.on('opponentAction', (action) => {
+            console.log('收到 opponentAction 事件');
+            console.log(`对手的操作: ${JSON.stringify(action)}`);
             this.handleOpponentAction(action);
         });
 
         this.socket.on('playerDisconnected', (disconnectedId) => {
+            console.log('收到 playerDisconnected 事件');
+            console.log(`断开连接的玩家 ID: ${disconnectedId}`);
             if (disconnectedId !== this.playerId) {
                 alert('对手已断开连接');
                 this.gameOver = true;
@@ -411,7 +423,25 @@ class AnimalChess {
         });
 
         this.socket.on('joinError', (message) => {
+            console.log('收到 joinError 事件');
+            console.log(`错误信息: ${message}`);
             alert(message);
+        });
+
+        this.socket.on('roomJoined', (data) => {
+            console.log('收到 roomJoined 事件');
+            console.log('服务器返回的数据:', data);
+            if (data.roomId) {
+                this.roomId = data.roomId;
+                console.log('房间加入成功，房间号：', this.roomId);
+            } else {
+                console.log('房间加入失败，未接收到 roomId');
+            }
+            this.playerId = data.playerId || this.playerId;
+            this.playerColor = data.playerColor || this.playerColor;
+            console.log('当前 this.roomId:', this.roomId);
+            console.log('当前 this.playerId:', this.playerId);
+            console.log('当前 this.playerColor:', this.playerColor);
         });
     }
 
@@ -430,16 +460,17 @@ class AnimalChess {
 
     joinRoom() {
         const roomId = document.getElementById('room-code').value.trim().toUpperCase();
-        console.log(`输入的房间号: ${roomId}`);  // 打印输入的房间号
+        console.log('调用 joinRoom 方法');
+        console.log('输入的房间号:', roomId);
+        console.log('准备发送加入房间请求');
         if (roomId) {
-            console.log('准备发送加入房间请求');
             this.socket.emit('joinRoom', roomId);
             this.socket.on('roomJoined', (data) => {
                 console.log('收到 roomJoined 事件');
-                console.log(`服务器返回的数据: ${JSON.stringify(data)}`);  // 打印服务器返回的完整数据
+                console.log('服务器返回的数据:', data);
                 if (data.roomId) {
                     this.roomId = data.roomId;
-                    console.log(`设置后的 this.roomId: ${this.roomId}`);  // 打印设置后的 this.roomId
+                    console.log('房间加入成功，房间号：', this.roomId);
                     this.playerId = data.playerId;
                     this.playerColor = '蓝方';  // 加入房间的玩家是蓝方
                     document.getElementById('current-room-code').textContent = this.roomId;
@@ -447,7 +478,7 @@ class AnimalChess {
                     this.log(`成功加入房间，房间号：${this.roomId}`);
                     console.log(`成功加入房间，房间号：${this.roomId}`);
                 } else {
-                    console.error('加入房间失败，未能获取 roomId');
+                    console.log('房间加入失败，未接收到 roomId');
                     this.log('加入房间失败，未能获取 roomId');
                 }
             });

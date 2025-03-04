@@ -26,6 +26,7 @@ io.on('connection', (socket) => {
 
     // 创建房间
     socket.on('createRoom', () => {
+        console.log('收到 createRoom 请求');
         const roomId = generateRoomId();
         gameRooms.set(roomId, {
             players: [socket.id],
@@ -35,11 +36,12 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         socket.emit('roomCreated', { roomId, playerId: socket.id });
         console.log('房间创建：', roomId);
+        console.log('当前房间信息：', gameRooms.get(roomId));
     });
 
     // 加入房间
     socket.on('joinRoom', (roomId) => {
-        console.log('尝试加入房间：', roomId);
+        console.log('收到 joinRoom 请求，房间号：', roomId);
         const room = gameRooms.get(roomId);
         console.log('房间信息：', room);
         if (room && room.players.length < 2) {
@@ -59,13 +61,16 @@ io.on('connection', (socket) => {
             });
             
             console.log('玩家加入房间：', roomId);
+            console.log('更新后的房间信息：', gameRooms.get(roomId));
         } else {
+            console.log('加入房间失败，房间不存在或已满');
             socket.emit('joinError', '房间不存在或已满');
         }
     });
 
     // 处理游戏操作
     socket.on('gameAction', (data) => {
+        console.log('收到 gameAction 请求，数据：', data);
         const { roomId, action, gameState } = data;
         const room = gameRooms.get(roomId);
         
@@ -75,6 +80,10 @@ io.on('connection', (socket) => {
             
             // 广播游戏操作给房间内其他玩家
             socket.to(roomId).emit('opponentAction', action);
+            console.log('游戏状态更新，房间号：', roomId);
+            console.log('当前游戏状态：', room.gameState);
+        } else {
+            console.log('gameAction 失败，房间不存在或玩家不在房间内');
         }
     });
 
@@ -87,6 +96,7 @@ io.on('connection', (socket) => {
             if (room.players.includes(socket.id)) {
                 io.to(roomId).emit('playerDisconnected', socket.id);
                 gameRooms.delete(roomId);
+                console.log('清理房间：', roomId);
                 break;
             }
         }
