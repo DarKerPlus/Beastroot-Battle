@@ -357,15 +357,46 @@ class AnimalChess {
             console.log('当前 this.roomId:', this.roomId);
             console.log('当前 this.playerId:', this.playerId);
             console.log('当前 this.playerColor:', this.playerColor);
+            
+            // 如果 roomId 为 null，尝试从 sessionStorage 或其他来源获取
             if (!this.roomId) {
-                console.log('游戏开始时 roomId 未定义，无法继续');
-                return;
-            }
-            // 设置玩家颜色
-            if (data.players) {
-                this.playerColor = data.players[this.playerId];
-                if (!this.playerColor) {
-                    this.playerColor = this.playerId === data.creator ? '红方' : '蓝方';
+                // 尝试从输入框获取 roomId
+                const inputRoomId = document.getElementById('room-code').value.trim().toUpperCase();
+                if (inputRoomId) {
+                    this.roomId = inputRoomId;
+                    console.log('从输入框获取 roomId:', this.roomId);
+                }
+                
+                // 如果 playerId 为 null，则从 socket.id 获取
+                if (!this.playerId) {
+                    this.playerId = this.socket.id;
+                    console.log('从 socket.id 获取 playerId:', this.playerId);
+                }
+                
+                // 设置玩家颜色
+                if (data.players) {
+                    for (const id in data.players) {
+                        if (id === this.playerId) {
+                            this.playerColor = data.players[id];
+                            console.log('从 gameStart 数据中获取 playerColor:', this.playerColor);
+                            break;
+                        }
+                    }
+                    
+                    // 如果仍然没有设置 playerColor，则根据是否是当前玩家来设置
+                    if (!this.playerColor) {
+                        this.playerColor = data.currentPlayer === this.playerId ? '红方' : '蓝方';
+                        console.log('根据当前玩家设置 playerColor:', this.playerColor);
+                    }
+                }
+                
+                console.log('设置后的 this.roomId:', this.roomId);
+                console.log('设置后的 this.playerId:', this.playerId);
+                console.log('设置后的 this.playerColor:', this.playerColor);
+                
+                if (!this.roomId) {
+                    console.log('游戏开始时 roomId 未定义，无法继续');
+                    return;
                 }
             }
             
@@ -434,8 +465,15 @@ class AnimalChess {
             if (data.roomId) {
                 this.roomId = data.roomId;
                 console.log('房间加入成功，房间号：', this.roomId);
+                this.playerId = data.playerId;
+                this.playerColor = '蓝方';  // 加入房间的玩家是蓝方
+                document.getElementById('current-room-code').textContent = this.roomId;
+                document.getElementById('room-info').style.display = 'block';
+                this.log(`成功加入房间，房间号：${this.roomId}`);
+                console.log(`成功加入房间，房间号：${this.roomId}`);
             } else {
                 console.log('房间加入失败，未接收到 roomId');
+                this.log('加入房间失败，未能获取 roomId');
             }
             this.playerId = data.playerId || this.playerId;
             this.playerColor = data.playerColor || this.playerColor;
@@ -465,23 +503,6 @@ class AnimalChess {
         console.log('准备发送加入房间请求');
         if (roomId) {
             this.socket.emit('joinRoom', roomId);
-            this.socket.on('roomJoined', (data) => {
-                console.log('收到 roomJoined 事件');
-                console.log('服务器返回的数据:', data);
-                if (data.roomId) {
-                    this.roomId = data.roomId;
-                    console.log('房间加入成功，房间号：', this.roomId);
-                    this.playerId = data.playerId;
-                    this.playerColor = '蓝方';  // 加入房间的玩家是蓝方
-                    document.getElementById('current-room-code').textContent = this.roomId;
-                    document.getElementById('room-info').style.display = 'block';
-                    this.log(`成功加入房间，房间号：${this.roomId}`);
-                    console.log(`成功加入房间，房间号：${this.roomId}`);
-                } else {
-                    console.log('房间加入失败，未接收到 roomId');
-                    this.log('加入房间失败，未能获取 roomId');
-                }
-            });
         } else {
             console.log('房间号为空，无法加入房间');
             alert('请输入房间码');
