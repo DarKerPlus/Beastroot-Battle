@@ -4,6 +4,11 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
+// 添加测试路由
+app.get('/test', (req, res) => {
+    res.send('服务器正常工作！');
+});
+
 // 提供静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -88,6 +93,6 @@ io.on('connection', (socket) => {
 
 // 启动服务器
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+http.listen(PORT, '0.0.0.0', () => {
     console.log(`服务器运行在端口 ${PORT}`);
 }); 

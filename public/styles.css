@@ -61,10 +61,12 @@ body {
 
 /* 游戏界面 */
 .board-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    align-items: flex-start;
     margin: 20px auto;
-    position: relative;
-    width: 400px;
-    height: 400px;
+    flex-wrap: wrap;
 }
 
 canvas {
@@ -130,8 +132,17 @@ button:disabled {
 
 /* 游戏状态 */
 .game-status {
-    margin-bottom: 10px;
-    font-size: 18px;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.game-status span {
+    margin: 0 10px;
+}
+
+#player-color {
+    font-weight: bold;
 }
 
 #current-player.red {
@@ -188,4 +199,54 @@ button:disabled {
     color: white;
     font-size: 24px;
     animation: fadeIn 0.5s ease-in;
+}
+
+.game-log {
+    width: 400px;
+    min-width: 300px;
+    height: 400px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    overflow-y: auto;
+    background: #f5f5f5;
+    border-radius: 5px;
+    font-size: 0.9em;
+    resize: both;
+    overflow: auto;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.game-log div {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+/* 添加滚动条样式 */
+.game-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+.game-log::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.game-log::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.game-log::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.red {
+    color: #c92a2a;
+}
+
+.blue {
+    color: #1864ab;
 } 
