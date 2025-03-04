@@ -59,7 +59,10 @@ class AnimalChess {
         
         // 绑定房间相关事件
         document.getElementById('create-room').addEventListener('click', () => this.createRoom());
-        document.getElementById('join-room').addEventListener('click', () => this.joinRoom());
+        document.getElementById('join-room').addEventListener('click', () => {
+            console.log('调用 joinRoom 方法');  // 添加日志以确认调用
+            this.joinRoom();
+        });
 
         // 绑定canvas点击事件
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
@@ -183,6 +186,7 @@ class AnimalChess {
     }
 
     handleClick(e) {
+        console.log(`当前 roomId: ${this.roomId}`);  // 添加日志记录 roomId
         if (this.gameOver || this.currentPlayer !== this.playerColor) {
             this.log('现在不是你的回合');
             console.log('点击无效：不是你的回合');
@@ -220,6 +224,8 @@ class AnimalChess {
                         gameState: this.getGameState()
                     });
                     console.log('发送翻开棋子操作到服务器');
+                } else {
+                    console.log('未能发送操作到服务器：roomId 未定义');
                 }
 
                 this.handleTurnEnd();
@@ -255,6 +261,8 @@ class AnimalChess {
                             gameState: this.getGameState()
                         });
                         console.log('发送移动棋子操作到服务器');
+                    } else {
+                        console.log('未能发送操作到服务器：roomId 未定义');
                     }
 
                     this.handleTurnEnd();
@@ -269,6 +277,7 @@ class AnimalChess {
             
             this.drawBoard();
         }
+        console.log(`操作后 roomId: ${this.roomId}`);  // 添加日志记录 roomId
     }
 
     canMove(fromRow, fromCol, toRow, toCol) {
@@ -315,6 +324,16 @@ class AnimalChess {
         if (this.currentPlayer !== this.playerColor) {
             this.selectedPiece = null;
         }
+
+        // 发送更新的游戏状态到服务器
+        if (this.roomId) {
+            this.socket.emit('updateGameState', {
+                roomId: this.roomId,
+                gameState: this.getGameState()
+            });
+            console.log('发送更新的游戏状态到服务器');
+            console.log(`当前游戏状态：${JSON.stringify(this.getGameState())}`);
+        }
     }
 
     // Socket.io 相关方法
@@ -326,9 +345,16 @@ class AnimalChess {
             document.getElementById('current-room-code').textContent = this.roomId;
             document.getElementById('room-info').style.display = 'block';
             this.log(`房间创建成功，房间号：${this.roomId}`);
+            console.log(`房间创建成功，房间号：${this.roomId}`);
         });
 
         this.socket.on('gameStart', (data) => {
+            console.log(`游戏开始时的 roomId: ${this.roomId}`);  // 添加日志记录 roomId
+            console.log(`游戏开始时接收到的数据: ${JSON.stringify(data)}`);  // 打印接收到的完整数据
+            if (!this.roomId) {
+                console.error('游戏开始时 roomId 未定义，无法继续');
+                return;
+            }
             // 设置玩家颜色
             if (data.players) {
                 this.playerColor = data.players[this.playerId];
@@ -352,7 +378,7 @@ class AnimalChess {
             // 初始化游戏状态
             this.startGame(data);
             
-            // 如果是蓝方，显示等待红方行动
+            // 确保当前玩家的回合状态正确
             if (this.playerColor === '蓝方') {
                 this.log('等待红方行动');
                 this.currentPlayer = '红方';
@@ -391,13 +417,42 @@ class AnimalChess {
 
     createRoom() {
         this.socket.emit('createRoom');
+        this.socket.on('roomCreated', (data) => {
+            this.roomId = data.roomId;
+            this.playerId = data.playerId;
+            this.playerColor = '红方';  // 创建房间的玩家是红方
+            document.getElementById('current-room-code').textContent = this.roomId;
+            document.getElementById('room-info').style.display = 'block';
+            this.log(`房间创建成功，房间号：${this.roomId}`);
+            console.log(`房间创建成功，房间号：${this.roomId}`);
+        });
     }
 
     joinRoom() {
         const roomId = document.getElementById('room-code').value.trim().toUpperCase();
+        console.log(`输入的房间号: ${roomId}`);  // 打印输入的房间号
         if (roomId) {
+            console.log('准备发送加入房间请求');
             this.socket.emit('joinRoom', roomId);
+            this.socket.on('roomJoined', (data) => {
+                console.log('收到 roomJoined 事件');
+                console.log(`服务器返回的数据: ${JSON.stringify(data)}`);  // 打印服务器返回的完整数据
+                if (data.roomId) {
+                    this.roomId = data.roomId;
+                    console.log(`设置后的 this.roomId: ${this.roomId}`);  // 打印设置后的 this.roomId
+                    this.playerId = data.playerId;
+                    this.playerColor = '蓝方';  // 加入房间的玩家是蓝方
+                    document.getElementById('current-room-code').textContent = this.roomId;
+                    document.getElementById('room-info').style.display = 'block';
+                    this.log(`成功加入房间，房间号：${this.roomId}`);
+                    console.log(`成功加入房间，房间号：${this.roomId}`);
+                } else {
+                    console.error('加入房间失败，未能获取 roomId');
+                    this.log('加入房间失败，未能获取 roomId');
+                }
+            });
         } else {
+            console.log('房间号为空，无法加入房间');
             alert('请输入房间码');
         }
     }
@@ -414,7 +469,6 @@ class AnimalChess {
             
             this.log(`对手移动了 ${piece.type}`);
             console.log(`对手移动棋子：${piece.type} 到 行 ${toRow}, 列 ${toCol}`);
-            this.handleTurnEnd();
         } else if (action.type === 'reveal') {
             const [row, col] = action.position;
             // 使用服务器发送的棋子信息
@@ -423,11 +477,31 @@ class AnimalChess {
                 this.board[row][col].revealed = true;
                 this.log(`对手翻开了 ${action.piece.type}`);
                 console.log(`对手翻开棋子：${action.piece.type} 在 行 ${row}, 列 ${col}`);
-                this.handleTurnEnd();
             }
         }
         
         this.drawBoard();
+        // 确保游戏状态更新
+        this.currentPlayer = this.currentPlayer === '红方' ? '蓝方' : '红方';
+        document.getElementById('current-player').textContent = `当前回合：${this.currentPlayer}`;
+        document.getElementById('current-player').className = this.currentPlayer === '红方' ? 'red' : 'blue';
+
+        // 添加回合提示
+        if (this.currentPlayer === this.playerColor) {
+            this.log('轮到你的回合了');
+        } else {
+            this.log('等待对手行动');
+        }
+
+        // 发送更新的游戏状态到服务器
+        if (this.roomId) {
+            this.socket.emit('updateGameState', {
+                roomId: this.roomId,
+                gameState: this.getGameState()
+            });
+            console.log('发送更新的游戏状态到服务器');
+            console.log(`当前游戏状态：${JSON.stringify(this.getGameState())}`);
+        }
     }
 
     getGameState() {

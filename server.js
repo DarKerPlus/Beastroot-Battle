@@ -39,7 +39,9 @@ io.on('connection', (socket) => {
 
     // 加入房间
     socket.on('joinRoom', (roomId) => {
+        console.log('尝试加入房间：', roomId);
         const room = gameRooms.get(roomId);
+        console.log('房间信息：', room);
         if (room && room.players.length < 2) {
             room.players.push(socket.id);
             socket.join(roomId);
